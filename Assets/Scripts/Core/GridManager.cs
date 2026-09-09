@@ -20,8 +20,9 @@ public class GridManager : MonoBehaviour
         InitializeGrid();
 
         // --- Step 3: Spawn starting numbers (will be added later) ---
-        // SpawnTile();
-        // SpawnTile();
+         SpawnTile(); //Calling this twice since we need to spawn two tiles with numbers on start
+         SpawnTile();
+         PrintGrid();
     }
 
     private void InitializeGrid()
@@ -29,10 +30,46 @@ public class GridManager : MonoBehaviour
         grid = new int[rows, cols];
         Debug.Log($"Grid initialized: {rows}x{cols}");
 
-        // Optional: Print the grid to verify
-        PrintGrid();
+       
     }
+    private void SpawnTile()
+    {
+        // Find all empty positions
+        int emptyCount = 0;
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                if (grid[r, c] == 0) emptyCount++;
 
+        if (emptyCount == 0)
+        {
+            Debug.LogWarning("No empty cells to spawn!");
+            return;
+        }
+
+        // Pick a random empty cell
+        int targetIndex = Random.Range(0, emptyCount);
+        int currentIndex = 0;
+
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < cols; c++)
+            {
+                if (grid[r, c] == 0)
+                {
+                    if (currentIndex == targetIndex)
+                    {
+                        // 90% chance of 2, 10% chance of 4
+                        int value = Random.Range(0, 10) < 9 ? 2 : 4;
+                        grid[r, c] = value;
+                        Debug.Log($"Spawned {value} at ({r}, {c})");
+                        return;
+                    }
+                    currentIndex++;
+                }
+            }
+        }
+    }
+    [ContextMenu("Print Grid")]
     private void PrintGrid()
     {
         string gridStr = "";

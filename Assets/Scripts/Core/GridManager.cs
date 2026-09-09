@@ -15,7 +15,7 @@ public class GridManager : MonoBehaviour
     private float minSwipeDistance = 30f;
     public UnityEvent OnInitialize;
     public UnityEvent OnSwipe;
-   
+    public UnityEvent<int> OnScoreGained;
     // --- Step 1: Grid Initialization ---
     void Start()
     {
@@ -256,6 +256,7 @@ public class GridManager : MonoBehaviour
             if (compacted[i] != 0 && compacted[i] == compacted[i + 1])
             {
                 compacted[i] *= 2;
+                OnScoreGained?.Invoke(compacted[i]);
                 compacted[i + 1] = 0;
                 i++; // Skip the next tile to avoid double-merging in one move
             }

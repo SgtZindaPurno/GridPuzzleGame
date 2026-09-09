@@ -150,12 +150,154 @@ public class GridManager : MonoBehaviour
 
     private void HandleSwipe(Direction dir)
     {
-        // --- Step 2: Debug log the direction ---
-        Debug.Log($"Swipe Detected: {dir}");
+        TryMove(dir);
+    }
+    private bool TryMove(Direction dir)
+    {
+        int[,] previousGrid = (int[,])grid.Clone(); // Snapshot to check if grid changed
+        bool moved = false;
 
-        // --- Steps 4 & 5: We'll call the move logic here ---
-        // bool moved = TryMove(dir);
-        // if (moved) { SpawnTile(); PrintGrid(); }
-        // else { Debug.Log("Invalid move - blocked"); }
+        switch (dir)
+        {
+            case Direction.Left: moved = MoveLeft(); break;
+            case Direction.Right: moved = MoveRight(); break;
+            case Direction.Up: moved = MoveUp(); break;
+            case Direction.Down: moved = MoveDown(); break;
+        }
+
+        if (moved)
+        {
+            Debug.Log($"Move {dir} successful!");
+            SpawnTile();
+            PrintGrid();
+            // Optional: Check win/lose condition here later
+        }
+        else
+        {
+            Debug.Log($"Move {dir} blocked - no changes");
+        }
+
+        return moved;
+    }
+
+    // --- Directional implementations ---
+    private bool MoveLeft()
+    {
+        bool changed = false;
+        for (int r = 0; r < rows; r++)
+        {
+            int[] line = GetRow(r);
+            int[] processed = ProcessLine(line);
+            if (SetRow(r, processed)) changed = true;
+        }
+        return changed;
+    }
+
+    private bool MoveRight()
+    {
+        bool changed = false;
+        for (int r = 0; r < rows; r++)
+        {
+            int[] line = GetRow(r);
+            System.Array.Reverse(line);
+            int[] processed = ProcessLine(line);
+            System.Array.Reverse(processed);
+            if (SetRow(r, processed)) changed = true;
+        }
+        return changed;
+    }
+
+    private bool MoveUp()
+    {
+        bool changed = false;
+        for (int c = 0; c < cols; c++)
+        {
+            int[] line = GetColumn(c);
+            int[] processed = ProcessLine(line);
+            if (SetColumn(c, processed)) changed = true;
+        }
+        return changed;
+    }
+
+    private bool MoveDown()
+    {
+        bool changed = false;
+        for (int c = 0; c < cols; c++)
+        {
+            int[] line = GetColumn(c);
+            System.Array.Reverse(line);
+            int[] processed = ProcessLine(line);
+            System.Array.Reverse(processed);
+            if (SetColumn(c, processed)) changed = true;
+        }
+        return changed;
+    }
+
+    // --- Core Line Processing (Compact + Merge) ---
+    private int[] ProcessLine(int[] line)
+    {
+        // Step 1: Compact (remove zeros)
+        int[] compacted = new int[line.Length];
+        int index = 0;
+        for (int i = 0; i < line.Length; i++)
+            if (line[i] != 0)
+                compacted[index++] = line[i];
+
+        // Step 2: Merge adjacent equal numbers
+        for (int i = 0; i < compacted.Length - 1; i++)
+        {
+            if (compacted[i] != 0 && compacted[i] == compacted[i + 1])
+            {
+                compacted[i] *= 2;
+                compacted[i + 1] = 0;
+                i++; // Skip the next tile to avoid double-merging in one move
+            }
+        }
+
+        // Step 3: Compact again (to push merged tiles to the side)
+        int[] result = new int[line.Length];
+        index = 0;
+        for (int i = 0; i < compacted.Length; i++)
+            if (compacted[i] != 0)
+                result[index++] = compacted[i];
+
+        return result;
+    }
+
+    // --- Helpers to get/set rows and columns ---
+    private int[] GetRow(int row)
+    {
+        int[] line = new int[cols];
+        for (int c = 0; c < cols; c++) line[c] = grid[row, c];
+        return line;
+    }
+
+    private bool SetRow(int row, int[] line)
+    {
+        bool changed = false;
+        for (int c = 0; c < cols; c++)
+        {
+            if (grid[row, c] != line[c]) changed = true;
+            grid[row, c] = line[c];
+        }
+        return changed;
+    }
+
+    private int[] GetColumn(int col)
+    {
+        int[] line = new int[rows];
+        for (int r = 0; r < rows; r++) line[r] = grid[r, col];
+        return line;
+    }
+
+    private bool SetColumn(int col, int[] line)
+    {
+        bool changed = false;
+        for (int r = 0; r < rows; r++)
+        {
+            if (grid[r, col] != line[r]) changed = true;
+            grid[r, col] = line[r];
+        }
+        return changed;
     }
 }

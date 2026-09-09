@@ -1,11 +1,11 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 public class GridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private int rows = 4;
-    [SerializeField] private int cols = 4;
-
+    public int rows;
+    public int cols;
     // The core data model: 0 = empty, >0 = tile value
     private int[,] grid;
 
@@ -13,7 +13,9 @@ public class GridManager : MonoBehaviour
     private Vector2 touchStartPos;
     private Vector2 touchEndPos;
     private float minSwipeDistance = 30f;
-
+    public UnityEvent OnInitialize;
+    public UnityEvent OnSwipe;
+   
     // --- Step 1: Grid Initialization ---
     void Start()
     {
@@ -23,8 +25,12 @@ public class GridManager : MonoBehaviour
          SpawnTile(); //Calling this twice since we need to spawn two tiles with numbers on start
          SpawnTile();
          PrintGrid();
+         OnInitialize?.Invoke();
     }
-
+    public int[,] GetGridData()
+    {
+        return grid; // Direct reference (read-only for visualizer)
+    }
     private void InitializeGrid()
     {
         grid = new int[rows, cols];
@@ -151,6 +157,7 @@ public class GridManager : MonoBehaviour
     private void HandleSwipe(Direction dir)
     {
         TryMove(dir);
+        OnSwipe?.Invoke();
     }
     private bool TryMove(Direction dir)
     {

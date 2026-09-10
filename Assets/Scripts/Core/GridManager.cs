@@ -10,10 +10,7 @@ public class GridManager : MonoBehaviour
     // The core data model: 0 = empty, >0 = tile value
     private int[,] grid;
 
-    // Input tracking
-    private Vector2 touchStartPos;
-    private Vector2 touchEndPos;
-    private float minSwipeDistance = 30f;
+  
 
     [Header("Events")]
     public UnityEvent OnInitialize;              // Grid ready
@@ -98,55 +95,15 @@ public class GridManager : MonoBehaviour
         Debug.Log(gridStr);
     }
 
-    // --- Input ---
-    void Update() => DetectSwipe();
-
-    private void DetectSwipe()
-    {
-        if (Input.GetMouseButtonDown(0))
-            touchStartPos = Input.mousePosition;
-        else if (Input.GetMouseButtonUp(0))
-        {
-            touchEndPos = Input.mousePosition;
-            ProcessSwipe();
-        }
-
-        if (Input.touchCount > 0)
-        {
-            Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
-                touchStartPos = touch.position;
-            else if (touch.phase == TouchPhase.Ended)
-            {
-                touchEndPos = touch.position;
-                ProcessSwipe();
-            }
-        }
-    }
-
-    private void ProcessSwipe()
-    {
-        Vector2 swipeDelta = touchEndPos - touchStartPos;
-        if (swipeDelta.magnitude < minSwipeDistance) return;
-
-        Direction dir;
-        if (Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y))
-            dir = swipeDelta.x > 0 ? Direction.Right : Direction.Left;
-        else
-            dir = swipeDelta.y > 0 ? Direction.Up : Direction.Down;
-
-        HandleSwipe(dir);
-    }
-
     private enum Direction { Up, Down, Left, Right }
 
-    private void HandleSwipe(Direction dir)
+    public void HandleSwipe(int direction)
     {
-        OnBeforeMove?.Invoke();       // <-- HistoryManager snapshot hook
-        bool moved = TryMove(dir);
+        OnBeforeMove?.Invoke();
+        bool moved = TryMove((Direction)direction);
 
-        if (moved) OnMoveCompleted?.Invoke();   // <-- Visualizer refresh hook
-        else OnMoveBlocked?.Invoke();     // <-- HistoryManager discard hook
+        if (moved) OnMoveCompleted?.Invoke();
+        else OnMoveBlocked?.Invoke();
     }
 
     private bool TryMove(Direction dir)

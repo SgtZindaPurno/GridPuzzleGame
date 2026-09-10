@@ -16,6 +16,19 @@ public class ScoreManager : MonoBehaviour
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateUI();
     }
+    public void SetScore(int newScore)
+    {
+        currentScore = newScore;
+
+        if (currentScore > highScore)
+        {
+            highScore = currentScore;
+            PlayerPrefs.SetInt("HighScore", highScore);
+            PlayerPrefs.Save();
+        }
+
+        UpdateUI();
+    }
 
     // Call this when the game starts or restarts
     public void ResetScore()
@@ -24,6 +37,7 @@ public class ScoreManager : MonoBehaviour
         UpdateUI();
     }
 
+    /*
     // This method will be triggered by GridManager's OnScoreGained event
     public void AddScore(int pointsAdded)
     {
@@ -39,7 +53,7 @@ public class ScoreManager : MonoBehaviour
 
         UpdateUI();
     }
-
+    */
     private void UpdateUI()
     {
         if (scoreText != null)

@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -16,6 +17,28 @@ public class GridManager : MonoBehaviour
     public UnityEvent OnInitialize;
     public UnityEvent OnSwipe;
     public UnityEvent<int> OnScoreGained;
+
+    [Header("History")]
+    [Tooltip("Maximum number of undo steps kept in memory")]
+    [SerializeField] private int maxHistorySize = 20;
+
+    public UnityEvent<int> OnScoreChanged;   // Absolute score (for UI)
+    public UnityEvent OnUndoPerformed;
+    public UnityEvent OnUndoUnavailable;
+
+    private int score = 0;
+
+    // Undo stack
+    private Stack<GridState> history = new Stack<GridState>();
+
+    private struct GridState
+    {
+        public int[,] grid;
+        public int score;
+    }
+    public int CurrentScore => score;
+    public bool CanUndo => history.Count > 0;
+
     // --- Step 1: Grid Initialization ---
     void Start()
     {
@@ -26,6 +49,7 @@ public class GridManager : MonoBehaviour
          SpawnTile();
          PrintGrid();
          OnInitialize?.Invoke();
+         OnScoreChanged?.Invoke(score);  
     }
     public int[,] GetGridData()
     {
@@ -36,7 +60,11 @@ public class GridManager : MonoBehaviour
         grid = new int[rows, cols];
         Debug.Log($"Grid initialized: {rows}x{cols}");
 
-       
+        history.Clear();
+        score = 0;
+      
+
+
     }
     private void SpawnTile()
     {
@@ -161,9 +189,11 @@ public class GridManager : MonoBehaviour
     }
     private bool TryMove(Direction dir)
     {
-        int[,] previousGrid = (int[,])grid.Clone(); // Snapshot to check if grid changed
-        bool moved = false;
+        // 1. Snapshot BEFORE the move
+        SaveState();
 
+        // 2. Execute
+        bool moved = false;
         switch (dir)
         {
             case Direction.Left: moved = MoveLeft(); break;
@@ -174,19 +204,57 @@ public class GridManager : MonoBehaviour
 
         if (moved)
         {
-            Debug.Log($"Move {dir} successful!");
             SpawnTile();
             PrintGrid();
-            // Optional: Check win/lose condition here later
+            OnScoreChanged?.Invoke(score);   // <-- Sync UI after move
+            Debug.Log($"Move {dir} successful!");
         }
         else
         {
+            // Nothing changed → discard the useless snapshot
+            history.Pop();
             Debug.Log($"Move {dir} blocked - no changes");
         }
 
         return moved;
     }
+    private void SaveState()
+    {
+        // Trim oldest if at capacity (Stack doesn't trim automatically)
+        if (history.Count >= maxHistorySize)
+        {
+            GridState[] temp = history.ToArray();  // [newest ... oldest]
+            history.Clear();
+            // Re-push everything except the last element (oldest)
+            for (int i = temp.Length - 2; i >= 0; i--)
+                history.Push(temp[i]);
+        }
 
+        history.Push(new GridState
+        {
+            grid = (int[,])grid.Clone(),
+            score = score
+        });
+    }
+
+    public void Undo()
+    {
+        if (history.Count == 0)
+        {
+            Debug.Log("Nothing to undo.");
+            OnUndoUnavailable?.Invoke();
+            return;
+        }
+
+        GridState state = history.Pop();
+        grid = state.grid;
+        score = state.score;
+
+        PrintGrid();
+        OnScoreChanged?.Invoke(score);   // Restore score in UI
+        OnUndoPerformed?.Invoke();       // Let visualizer refresh
+        Debug.Log($"Undo performed. Score restored to {score}");
+    }
     // --- Directional implementations ---
     private bool MoveLeft()
     {
@@ -256,6 +324,7 @@ public class GridManager : MonoBehaviour
             if (compacted[i] != 0 && compacted[i] == compacted[i + 1])
             {
                 compacted[i] *= 2;
+                score += compacted[i];
                 OnScoreGained?.Invoke(compacted[i]);
                 compacted[i + 1] = 0;
                 i++; // Skip the next tile to avoid double-merging in one move

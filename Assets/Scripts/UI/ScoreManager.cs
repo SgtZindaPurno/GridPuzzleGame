@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 using TMPro;
 
 public class ScoreManager : MonoBehaviour
@@ -7,18 +8,24 @@ public class ScoreManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
 
+    [Header("Events")]
+    public UnityEvent<int> OnScoreChanged;   // For other systems (e.g., floating "+8" popups)
+
     private int currentScore;
     private int highScore;
 
+    public int CurrentScore => currentScore;
+
     private void Start()
     {
-        // Load high score from device storage (defaults to 0 if not found)
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateUI();
     }
-    public void SetScore(int newScore)
+
+    // Hook this to GridManager.OnMergeOccurred
+    public void AddScore(int points)
     {
-        currentScore = newScore;
+        currentScore += points;
 
         if (currentScore > highScore)
         {
@@ -28,42 +35,30 @@ public class ScoreManager : MonoBehaviour
         }
 
         UpdateUI();
+        OnScoreChanged?.Invoke(currentScore);
     }
 
-    // Call this when the game starts or restarts
+    // Hook this to HistoryManager (undo restore)
+    public void SetScore(int absoluteValue)
+    {
+        currentScore = absoluteValue;
+        UpdateUI();
+        OnScoreChanged?.Invoke(currentScore);
+    }
+
     public void ResetScore()
     {
         currentScore = 0;
         UpdateUI();
+        OnScoreChanged?.Invoke(currentScore);
     }
 
-    /*
-    // This method will be triggered by GridManager's OnScoreGained event
-    public void AddScore(int pointsAdded)
-    {
-        currentScore += pointsAdded;
-
-        // Check for new high score
-        if (currentScore > highScore)
-        {
-            highScore = currentScore;
-            PlayerPrefs.SetInt("HighScore", highScore);
-            PlayerPrefs.Save();
-        }
-
-        UpdateUI();
-    }
-    */
     private void UpdateUI()
     {
-        if (scoreText != null)
-            scoreText.text = "Current Score: "+ currentScore.ToString();
-
-        if (highScoreText != null)
-            highScoreText.text = "High Score: "+ highScore.ToString();
+        if (scoreText != null) scoreText.text = "Current Score: " + currentScore;
+        if (highScoreText != null) highScoreText.text = "High Score: " + highScore;
     }
 
-    // Optional: Useful for developer testing
     [ContextMenu("Reset High Score")]
     private void ClearHighScore()
     {

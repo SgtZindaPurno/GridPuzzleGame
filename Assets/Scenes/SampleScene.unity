@@ -414,6 +414,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
   scoreText: {fileID: 1503819788}
   highScoreText: {fileID: 1758979889}
+  OnScoreChanged:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &627288187
 Transform:
   m_ObjectHideFlags: 0
@@ -487,12 +490,12 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnSwipe:
+  OnBeforeMove:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1622464262}
-        m_TargetAssemblyTypeName: GridVisualizer, Assembly-CSharp
-        m_MethodName: UpdateVisuals
+      - m_Target: {fileID: 863862466}
+        m_TargetAssemblyTypeName: HistoryManager, Assembly-CSharp
+        m_MethodName: CaptureState
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -502,16 +505,12 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnScoreGained:
-    m_PersistentCalls:
-      m_Calls: []
-  maxHistorySize: 20
-  OnScoreChanged:
+  OnMergeOccurred:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 627288186}
         m_TargetAssemblyTypeName: ScoreManager, Assembly-CSharp
-        m_MethodName: SetScore
+        m_MethodName: AddScore
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -521,7 +520,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnUndoPerformed:
+  OnMoveCompleted:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1622464262}
@@ -536,9 +535,21 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnUndoUnavailable:
+  OnMoveBlocked:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 863862466}
+        m_TargetAssemblyTypeName: HistoryManager, Assembly-CSharp
+        m_MethodName: DiscardLastSnapshot
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!4 &789206758
 Transform:
   m_ObjectHideFlags: 0
@@ -677,6 +688,86 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &863862465
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 863862467}
+  - component: {fileID: 863862466}
+  m_Layer: 0
+  m_Name: HistoryManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &863862466
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863862465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deecc69b591484043a6043b3d04f66fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HistoryManager
+  gridManager: {fileID: 789206757}
+  scoreManager: {fileID: 627288186}
+  maxHistorySize: 20
+  OnUndoPerformed:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1622464262}
+        m_TargetAssemblyTypeName: GridVisualizer, Assembly-CSharp
+        m_MethodName: UpdateVisuals
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  OnUndoUnavailable:
+    m_PersistentCalls:
+      m_Calls: []
+  OnUndoAvailabilityChanged:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1282902139}
+        m_TargetAssemblyTypeName: UndoButtonController, Assembly-CSharp
+        m_MethodName: SetInteractable
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!4 &863862467
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863862465}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 198.42816, y: 0.00001, z: 191.3572}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -875,6 +966,7 @@ GameObject:
   - component: {fileID: 1282902138}
   - component: {fileID: 1282902137}
   - component: {fileID: 1282902136}
+  - component: {fileID: 1282902139}
   m_Layer: 5
   m_Name: UndoButton
   m_TagString: Untagged
@@ -946,8 +1038,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 789206757}
-        m_TargetAssemblyTypeName: GridManager, Assembly-CSharp
+      - m_Target: {fileID: 863862466}
+        m_TargetAssemblyTypeName: HistoryManager, Assembly-CSharp
         m_MethodName: Undo
         m_Mode: 1
         m_Arguments:
@@ -996,6 +1088,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1282902134}
   m_CullTransparentMesh: 1
+--- !u!114 &1282902139
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1282902134}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9315d6ad1700bfa4a8c33023573ac645, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UndoButtonController
+  undoButton: {fileID: 1282902136}
 --- !u!1 &1300933729
 GameObject:
   m_ObjectHideFlags: 0
@@ -1468,3 +1573,4 @@ SceneRoots:
   - {fileID: 863186448}
   - {fileID: 1622464263}
   - {fileID: 627288187}
+  - {fileID: 863862467}

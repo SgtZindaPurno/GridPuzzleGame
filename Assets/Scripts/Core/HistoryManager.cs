@@ -18,10 +18,14 @@ public class HistoryManager : MonoBehaviour
 
     private Stack<Snapshot> history = new Stack<Snapshot>();
 
+    [SerializeField] private PowerUpManager powerUpManager;
+
     private struct Snapshot
     {
         public int[,] grid;
         public int score;
+        public int nextThreshold;
+        public int activeMovesLeft;
     }
 
     public bool CanUndo => history.Count > 0;
@@ -40,8 +44,16 @@ public class HistoryManager : MonoBehaviour
 
         int[,] gridCopy = (int[,])gridManager.GetGridData().Clone();
         int snapshotScore = scoreManager != null ? scoreManager.CurrentScore : 0;
+        int threshold = powerUpManager != null ? powerUpManager.NextThreshold : 0;
+        int movesLeft = powerUpManager != null ? powerUpManager.ActiveMovesLeft : 0;
 
-        history.Push(new Snapshot { grid = gridCopy, score = snapshotScore });
+
+        history.Push(new Snapshot 
+        {   grid = gridCopy, 
+            score = snapshotScore,
+            nextThreshold = threshold,
+            activeMovesLeft = movesLeft
+        });
         OnUndoAvailabilityChanged?.Invoke(true);
     }
 
@@ -65,6 +77,7 @@ public class HistoryManager : MonoBehaviour
         Snapshot state = history.Pop();
         gridManager.SetGridData(state.grid);
         if (scoreManager != null) scoreManager.SetScore(state.score);
+        if (powerUpManager != null) powerUpManager.RestoreState(state.nextThreshold, state.activeMovesLeft);
 
         OnUndoPerformed?.Invoke();
         OnUndoAvailabilityChanged?.Invoke(CanUndo);

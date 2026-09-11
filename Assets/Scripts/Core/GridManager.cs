@@ -19,6 +19,7 @@ public class GridManager : MonoBehaviour
     public UnityEvent OnMoveCompleted;           // A valid move finished (visualizer refresh)
     public UnityEvent OnMoveBlocked;             // Swipe produced no change
 
+    public bool SuppressSpawn = false;
     void Start()
     {
         InitializeGrid();
@@ -119,7 +120,7 @@ public class GridManager : MonoBehaviour
 
         if (moved)
         {
-            SpawnTile();
+            if (!SuppressSpawn) SpawnTile();
             PrintGrid();
             Debug.Log($"Move {dir} successful!");
         }

@@ -30,26 +30,32 @@ public class InputHandler : MonoBehaviour
 
     private void DetectSwipe()
     {
-        // Mouse (Editor)
+        // --- Touch input (takes priority when present) ---
+        
+
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+            switch (touch.phase)
+            {
+                case TouchPhase.Began:
+                    touchStartPos = touch.position;
+                    break;
+                case TouchPhase.Ended:
+                    touchEndPos = touch.position;
+                    ProcessSwipe();
+                    break;
+            }
+            return; // Don't also process mouse in the same frame
+        }
+
+        // --- Mouse input (Editor / standalone desktop) ---
         if (Input.GetMouseButtonDown(0))
             touchStartPos = Input.mousePosition;
         else if (Input.GetMouseButtonUp(0))
         {
             touchEndPos = Input.mousePosition;
             ProcessSwipe();
-        }
-
-        // Touch (Mobile)
-        if (Input.touchCount > 0)
-        {
-            Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
-                touchStartPos = touch.position;
-            else if (touch.phase == TouchPhase.Ended)
-            {
-                touchEndPos = touch.position;
-                ProcessSwipe();
-            }
         }
     }
 

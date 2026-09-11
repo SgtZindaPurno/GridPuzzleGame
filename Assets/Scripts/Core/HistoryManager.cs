@@ -22,7 +22,7 @@ public class HistoryManager : MonoBehaviour
 
     private struct Snapshot
     {
-        public int[,] grid;
+        public TileData[,] grid;
         public int score;
         public int nextThreshold;
         public int activeMovesLeft;
@@ -42,7 +42,7 @@ public class HistoryManager : MonoBehaviour
                 history.Push(temp[i]);
         }
 
-        int[,] gridCopy = (int[,])gridManager.GetGridData().Clone();
+        TileData[,] gridCopy = (TileData[,])gridManager.GetGridData().Clone();
         int snapshotScore = scoreManager != null ? scoreManager.CurrentScore : 0;
         int threshold = powerUpManager != null ? powerUpManager.NextThreshold : 0;
         int movesLeft = powerUpManager != null ? powerUpManager.ActiveMovesLeft : 0;

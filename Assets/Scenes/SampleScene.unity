@@ -612,6 +612,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GridManager
   rows: 5
   cols: 5
+  moveAnimDuration: 0.12
   OnInitialize:
     m_PersistentCalls:
       m_Calls:
@@ -654,6 +655,21 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  OnMovePlanned:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1622464262}
+        m_TargetAssemblyTypeName: GridVisualizer, Assembly-CSharp
+        m_MethodName: AnimateMove
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   OnMergeOccurred:
     m_PersistentCalls:
       m_Calls:
@@ -674,7 +690,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1622464262}
         m_TargetAssemblyTypeName: GridVisualizer, Assembly-CSharp
-        m_MethodName: UpdateVisuals
+        m_MethodName: SyncWithGrid
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -711,7 +727,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  SuppressSpawn: 0
 --- !u!4 &789206758
 Transform:
   m_ObjectHideFlags: 0
@@ -892,7 +907,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1622464262}
         m_TargetAssemblyTypeName: GridVisualizer, Assembly-CSharp
-        m_MethodName: UpdateVisuals
+        m_MethodName: HardRefresh
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -920,7 +935,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  powerUpManager: {fileID: 0}
+  powerUpManager: {fileID: 2040171714}
 --- !u!4 &863862467
 Transform:
   m_ObjectHideFlags: 0
@@ -1633,6 +1648,7 @@ MonoBehaviour:
   tilePrefab: {fileID: 5037991328211680665, guid: 9404e1fe280e5ca4d931713b9a554eff, type: 3}
   tileSpacing: 10
   tileColors: []
+  spawnAnimDuration: 0.15
 --- !u!4 &1622464263
 Transform:
   m_ObjectHideFlags: 0

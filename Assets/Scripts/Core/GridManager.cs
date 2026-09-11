@@ -1,249 +1,243 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.Events;
 
 public class GridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
-    public int rows;
-    public int cols;
+    public int rows = 4;
+    public int cols = 4;
 
-    // The core data model: 0 = empty, >0 = tile value
-    private int[,] grid;
-
-  
+    [Header("Animation")]
+    [SerializeField] private float moveAnimDuration = 0.12f;
 
     [Header("Events")]
-    public UnityEvent OnInitialize;              // Grid ready
-    public UnityEvent OnBeforeMove;              // Fires BEFORE any grid mutation (history capture)
-    public UnityEvent<int> OnMergeOccurred;      // Fires per merge, with merged value
-    public UnityEvent OnMoveCompleted;           // A valid move finished (visualizer refresh)
-    public UnityEvent OnMoveBlocked;             // Swipe produced no change
+    public UnityEvent OnInitialize;
+    public UnityEvent OnBeforeMove;
+    public UnityEvent<MoveResult> OnMovePlanned;
+    public UnityEvent<int> OnMergeOccurred;
+    public UnityEvent OnMoveCompleted;
+    public UnityEvent OnMoveBlocked;
 
-    public bool SuppressSpawn = false;
+    public bool SuppressSpawn { get; set; } = false;
+
+    private TileData[,] grid;
+    private int nextTileId = 1;
+    private bool isAnimating = false;
+
+    private enum Direction { Up = 0, Down = 1, Left = 2, Right = 3 }
+
+    // --- Public API ---
+    public TileData[,] GetGridData() => grid;
+
+    public void SetGridData(TileData[,] newGrid)
+    {
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                grid[r, c] = newGrid[r, c];
+        PrintGrid();
+    }
+
     void Start()
     {
-        InitializeGrid();
+        grid = new TileData[rows, cols];
+        nextTileId = 1;
         SpawnTile();
         SpawnTile();
         PrintGrid();
         OnInitialize?.Invoke();
     }
 
-    // --- Public grid API ---
-    public int[,] GetGridData() => grid;
-
-    public void SetGridData(int[,] newGrid)
+    public void HandleSwipe(int direction)
     {
-        // Deep copy so external systems can't mutate our internal state
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                grid[r, c] = newGrid[r, c];
+        if (isAnimating) return;
 
-        PrintGrid();
-    }
+        Direction dir = (Direction)direction;
+        MoveResult plan = ComputeMove(dir);
 
-    private void InitializeGrid()
-    {
-        grid = new int[rows, cols];
-        Debug.Log($"Grid initialized: {rows}x{cols}");
-    }
-
-    private void SpawnTile()
-    {
-        int emptyCount = 0;
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                if (grid[r, c] == 0) emptyCount++;
-
-        if (emptyCount == 0)
+        if (plan.IsEmpty)
         {
-            Debug.LogWarning("No empty cells to spawn!");
+            OnMoveBlocked?.Invoke();
             return;
         }
 
-        int targetIndex = Random.Range(0, emptyCount);
-        int currentIndex = 0;
+        OnBeforeMove?.Invoke();
+        StartCoroutine(ExecuteMove(plan));
+    }
 
+    private IEnumerator ExecuteMove(MoveResult plan)
+    {
+        isAnimating = true;
+
+        OnMovePlanned?.Invoke(plan);
+        yield return new WaitForSeconds(moveAnimDuration);
+
+        // Commit the new grid
+        grid = plan.newGrid;
+
+        // Fire merge events (for score)
+        foreach (var merge in plan.merges)
+            OnMergeOccurred?.Invoke(merge.newValue);
+
+        // Spawn a fresh tile (skip if power-up active)
+        if (!SuppressSpawn) SpawnTile();
+
+        PrintGrid();
+        OnMoveCompleted?.Invoke();
+        isAnimating = false;
+    }
+
+    // --- Spawn ---
+    private void SpawnTile()
+    {
+        var empty = new List<Vector2Int>();
         for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                if (grid[r, c].IsEmpty) empty.Add(new Vector2Int(r, c));
+
+        if (empty.Count == 0) return;
+
+        Vector2Int pos = empty[Random.Range(0, empty.Count)];
+        int value = Random.Range(0, 10) < 9 ? 2 : 4;
+        int id = nextTileId++;
+
+        grid[pos.x, pos.y] = new TileData { id = id, value = value };
+        Debug.Log($"Spawned tile {id}={value} at ({pos.x},{pos.y})");
+    }
+
+    // --- Move computation ---
+    private MoveResult ComputeMove(Direction dir)
+    {
+        var result = new MoveResult();
+        var newGrid = new TileData[rows, cols];
+
+        if (dir == Direction.Left || dir == Direction.Right)
+        {
+            for (int r = 0; r < rows; r++)
+                ProcessLine(BuildLineCells(r, dir), newGrid, result);
+        }
+        else
         {
             for (int c = 0; c < cols; c++)
+                ProcessLine(BuildLineCells(c, dir), newGrid, result);
+        }
+
+        result.newGrid = newGrid;
+        return result;
+    }
+
+    private Vector2Int[] BuildLineCells(int index, Direction dir)
+    {
+        bool horizontal = dir == Direction.Left || dir == Direction.Right;
+        int length = horizontal ? cols : rows;
+        var cells = new Vector2Int[length];
+
+        switch (dir)
+        {
+            case Direction.Left:
+                for (int i = 0; i < cols; i++) cells[i] = new Vector2Int(index, i);
+                break;
+            case Direction.Right:
+                for (int i = 0; i < cols; i++) cells[i] = new Vector2Int(index, cols - 1 - i);
+                break;
+            case Direction.Up:
+                for (int i = 0; i < rows; i++) cells[i] = new Vector2Int(i, index);
+                break;
+            case Direction.Down:
+                for (int i = 0; i < rows; i++) cells[i] = new Vector2Int(rows - 1 - i, index);
+                break;
+        }
+        return cells;
+    }
+
+    private void ProcessLine(Vector2Int[] cells, TileData[,] newGrid, MoveResult result)
+    {
+        // Gather non-empty tiles in destination-order (index 0 = edge)
+        var tiles = new List<(TileData data, Vector2Int pos)>();
+        foreach (var cell in cells)
+        {
+            var t = grid[cell.x, cell.y];
+            if (!t.IsEmpty) tiles.Add((t, cell));
+        }
+
+        int writeIdx = 0;
+        int i = 0;
+
+        while (i < tiles.Count)
+        {
+            Vector2Int dest = cells[writeIdx];
+
+            if (i + 1 < tiles.Count && tiles[i].data.value == tiles[i + 1].data.value)
             {
-                if (grid[r, c] == 0)
+                // --- Merge ---
+                int mergedValue = tiles[i].data.value * 2;
+                int mergedId = nextTileId++;
+
+                result.movements.Add(new TileMovement
                 {
-                    if (currentIndex == targetIndex)
-                    {
-                        int value = Random.Range(0, 10) < 9 ? 2 : 4;
-                        grid[r, c] = value;
-                        Debug.Log($"Spawned {value} at ({r}, {c})");
-                        return;
-                    }
-                    currentIndex++;
-                }
+                    tileId = tiles[i].data.id,
+                    fromRow = tiles[i].pos.x,
+                    fromCol = tiles[i].pos.y,
+                    toRow = dest.x,
+                    toCol = dest.y
+                });
+                result.movements.Add(new TileMovement
+                {
+                    tileId = tiles[i + 1].data.id,
+                    fromRow = tiles[i + 1].pos.x,
+                    fromCol = tiles[i + 1].pos.y,
+                    toRow = dest.x,
+                    toCol = dest.y
+                });
+
+                result.merges.Add(new MergeEvent
+                {
+                    tileIdA = tiles[i].data.id,
+                    tileIdB = tiles[i + 1].data.id,
+                    row = dest.x,
+                    col = dest.y,
+                    newValue = mergedValue,
+                    newTileId = mergedId
+                });
+
+                newGrid[dest.x, dest.y] = new TileData { id = mergedId, value = mergedValue };
+                i += 2;
             }
+            else
+            {
+                // --- Plain move ---
+                var t = tiles[i];
+
+                if (t.pos.x != dest.x || t.pos.y != dest.y)
+                {
+                    result.movements.Add(new TileMovement
+                    {
+                        tileId = t.data.id,
+                        fromRow = t.pos.x,
+                        fromCol = t.pos.y,
+                        toRow = dest.x,
+                        toCol = dest.y
+                    });
+                }
+
+                newGrid[dest.x, dest.y] = t.data;
+                i += 1;
+            }
+            writeIdx++;
         }
     }
 
     [ContextMenu("Print Grid")]
     private void PrintGrid()
     {
-        string gridStr = "";
+        string str = "";
         for (int r = 0; r < rows; r++)
         {
             for (int c = 0; c < cols; c++)
-                gridStr += grid[r, c] + "\t";
-            gridStr += "\n";
+                str += (grid[r, c].IsEmpty ? "." : grid[r, c].value.ToString()) + "\t";
+            str += "\n";
         }
-        Debug.Log(gridStr);
-    }
-
-    private enum Direction { Up, Down, Left, Right }
-
-    public void HandleSwipe(int direction)
-    {
-        OnBeforeMove?.Invoke();
-        bool moved = TryMove((Direction)direction);
-
-        if (moved) OnMoveCompleted?.Invoke();
-        else OnMoveBlocked?.Invoke();
-    }
-
-    private bool TryMove(Direction dir)
-    {
-        bool moved = false;
-        switch (dir)
-        {
-            case Direction.Left: moved = MoveLeft(); break;
-            case Direction.Right: moved = MoveRight(); break;
-            case Direction.Up: moved = MoveUp(); break;
-            case Direction.Down: moved = MoveDown(); break;
-        }
-
-        if (moved)
-        {
-            if (!SuppressSpawn) SpawnTile();
-            PrintGrid();
-            Debug.Log($"Move {dir} successful!");
-        }
-        else
-        {
-            Debug.Log($"Move {dir} blocked - no changes");
-        }
-
-        return moved;
-    }
-
-    // --- Directional implementations ---
-    private bool MoveLeft()
-    {
-        bool changed = false;
-        for (int r = 0; r < rows; r++)
-        {
-            int[] processed = ProcessLine(GetRow(r));
-            if (SetRow(r, processed)) changed = true;
-        }
-        return changed;
-    }
-
-    private bool MoveRight()
-    {
-        bool changed = false;
-        for (int r = 0; r < rows; r++)
-        {
-            int[] line = GetRow(r);
-            System.Array.Reverse(line);
-            int[] processed = ProcessLine(line);
-            System.Array.Reverse(processed);
-            if (SetRow(r, processed)) changed = true;
-        }
-        return changed;
-    }
-
-    private bool MoveUp()
-    {
-        bool changed = false;
-        for (int c = 0; c < cols; c++)
-        {
-            int[] processed = ProcessLine(GetColumn(c));
-            if (SetColumn(c, processed)) changed = true;
-        }
-        return changed;
-    }
-
-    private bool MoveDown()
-    {
-        bool changed = false;
-        for (int c = 0; c < cols; c++)
-        {
-            int[] line = GetColumn(c);
-            System.Array.Reverse(line);
-            int[] processed = ProcessLine(line);
-            System.Array.Reverse(processed);
-            if (SetColumn(c, processed)) changed = true;
-        }
-        return changed;
-    }
-
-    // --- Line processing ---
-    private int[] ProcessLine(int[] line)
-    {
-        int[] compacted = new int[line.Length];
-        int index = 0;
-        for (int i = 0; i < line.Length; i++)
-            if (line[i] != 0) compacted[index++] = line[i];
-
-        for (int i = 0; i < compacted.Length - 1; i++)
-        {
-            if (compacted[i] != 0 && compacted[i] == compacted[i + 1])
-            {
-                compacted[i] *= 2;
-                OnMergeOccurred?.Invoke(compacted[i]);   // <-- Score hook
-                compacted[i + 1] = 0;
-                i++;
-            }
-        }
-
-        int[] result = new int[line.Length];
-        index = 0;
-        for (int i = 0; i < compacted.Length; i++)
-            if (compacted[i] != 0) result[index++] = compacted[i];
-
-        return result;
-    }
-
-    // --- Helpers ---
-    private int[] GetRow(int row)
-    {
-        int[] line = new int[cols];
-        for (int c = 0; c < cols; c++) line[c] = grid[row, c];
-        return line;
-    }
-
-    private bool SetRow(int row, int[] line)
-    {
-        bool changed = false;
-        for (int c = 0; c < cols; c++)
-        {
-            if (grid[row, c] != line[c]) changed = true;
-            grid[row, c] = line[c];
-        }
-        return changed;
-    }
-
-    private int[] GetColumn(int col)
-    {
-        int[] line = new int[rows];
-        for (int r = 0; r < rows; r++) line[r] = grid[r, col];
-        return line;
-    }
-
-    private bool SetColumn(int col, int[] line)
-    {
-        bool changed = false;
-        for (int r = 0; r < rows; r++)
-        {
-            if (grid[r, col] != line[r]) changed = true;
-            grid[r, col] = line[r];
-        }
-        return changed;
+        Debug.Log(str);
     }
 }

@@ -19,7 +19,7 @@ public class GridManager : MonoBehaviour
     public UnityEvent<int> OnMergeOccurred;
     public UnityEvent OnMoveCompleted;
     public UnityEvent OnMoveBlocked;
-
+    public UnityEvent OnGridReset;
     public bool SuppressSpawn { get; set; } = false;
 
     private TileData[,] grid;
@@ -38,7 +38,22 @@ public class GridManager : MonoBehaviour
                 grid[r, c] = newGrid[r, c];
         PrintGrid();
     }
+    public void ResetGrid()
+    {
+        // Clear data
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                grid[r, c] = default;   // id=0, value=0
 
+        nextTileId = 1;
+        SuppressSpawn = false;
+
+        SpawnTile();
+        SpawnTile();
+        PrintGrid();
+
+        OnGridReset?.Invoke();
+    }
     void Start()
     {
         grid = new TileData[rows, cols];

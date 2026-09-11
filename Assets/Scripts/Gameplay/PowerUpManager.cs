@@ -26,6 +26,16 @@ public class PowerUpManager : MonoBehaviour
     private int nextThreshold;
     private int activeMovesLeft = 0;
     private bool lastAvailableState = false;
+    public void ResetPowerUp()
+    {
+        activeMovesLeft = 0;
+        nextThreshold = scoreThresholdStep;   // back to the initial 300
+        if (gridManager != null) gridManager.SuppressSpawn = false;
+
+        OnPowerUpMovesChanged?.Invoke(0);
+        RefreshState();
+        Debug.Log("[PowerUp] Reset.");
+    }
 
     // --- Public accessors (used by HistoryManager) ---
     public int NextThreshold => nextThreshold;
